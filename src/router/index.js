@@ -29,6 +29,11 @@ const router = createRouter({
           component: () => import('@/views/ProjectsView.vue'),
         },
         {
+          path: 'projects/:slug',
+          name: 'project-details',
+          component: () => import('@/views/ProjectDetailsView.vue'),
+        },
+        {
           path: 'experience',
           name: 'experience',
           component: () => import('@/views/ExperienceView.vue'),
@@ -74,6 +79,14 @@ const router = createRouter({
           component: () => import('@/views/admin/AdminMessagesView.vue'),
           meta: {
             adminTitle: 'Messages',
+          },
+        },
+        {
+          path: 'projects',
+          name: 'admin-projects',
+          component: () => import('@/views/admin/AdminProjectsView.vue'),
+          meta: {
+            adminTitle: 'Projects',
           },
         },
       ],

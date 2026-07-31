@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   BriefcaseBusiness,
@@ -10,6 +10,8 @@ import {
   LogOut,
   Menu,
   MessagesSquare,
+  Moon,
+  Sun,
   Wrench,
   X,
 } from '@lucide/vue'
@@ -20,10 +22,11 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const isSidebarOpen = ref(false)
+const theme = ref(localStorage.getItem('devvault-admin-theme') || 'dark')
 
 const navigation = [
   { label: 'Overview', icon: LayoutDashboard, to: '/admin', available: true },
-  { label: 'Projects', icon: FolderKanban, available: false },
+  { label: 'Projects', icon: FolderKanban, to: '/admin/projects', available: true },
   { label: 'Skills', icon: Wrench, available: false },
   { label: 'Experience', icon: BriefcaseBusiness, available: false },
   { label: 'Posts', icon: FileText, available: false },
@@ -31,6 +34,26 @@ const navigation = [
 ]
 
 const adminTitle = computed(() => route.meta.adminTitle || 'Overview')
+const isLightTheme = computed(() => theme.value === 'light')
+
+function applyTheme() {
+  document.documentElement.classList.toggle('admin-light', isLightTheme.value)
+}
+
+function toggleTheme() {
+  theme.value = isLightTheme.value ? 'dark' : 'light'
+}
+
+watch(theme, () => {
+  localStorage.setItem('devvault-admin-theme', theme.value)
+  applyTheme()
+})
+
+onMounted(applyTheme)
+
+onBeforeUnmount(() => {
+  document.documentElement.classList.remove('admin-light')
+})
 
 watch(
   () => route.fullPath,
@@ -92,7 +115,7 @@ async function logout() {
               v-if="item.available"
               :to="item.to"
               class="flex min-h-11 items-center gap-3 rounded-md px-3 text-sm font-medium text-muted transition hover:bg-white/5 hover:text-foreground motion-reduce:transition-none"
-              active-class="bg-primary/10 text-primary"
+              exact-active-class="bg-primary/10 text-primary"
             >
               <component :is="item.icon" :size="18" aria-hidden="true" />
               {{ item.label }}
@@ -158,14 +181,27 @@ async function logout() {
           </div>
         </div>
 
-        <RouterLink
-          to="/"
-          target="_blank"
-          class="inline-flex min-h-10 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium text-muted transition hover:border-primary/40 hover:text-foreground motion-reduce:transition-none"
-        >
-          <span class="hidden sm:inline">View portfolio</span>
-          <ExternalLink :size="16" aria-hidden="true" />
-        </RouterLink>
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            class="grid size-10 place-items-center rounded-md border border-border bg-surface text-muted transition hover:border-primary/40 hover:text-foreground motion-reduce:transition-none"
+            :aria-label="isLightTheme ? 'Use dark theme' : 'Use light theme'"
+            :title="isLightTheme ? 'Use dark theme' : 'Use light theme'"
+            @click="toggleTheme"
+          >
+            <Moon v-if="isLightTheme" :size="17" aria-hidden="true" />
+            <Sun v-else :size="17" aria-hidden="true" />
+          </button>
+
+          <RouterLink
+            to="/"
+            target="_blank"
+            class="inline-flex min-h-10 items-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium text-muted transition hover:border-primary/40 hover:text-foreground motion-reduce:transition-none"
+          >
+            <span class="hidden sm:inline">View portfolio</span>
+            <ExternalLink :size="16" aria-hidden="true" />
+          </RouterLink>
+        </div>
       </header>
 
       <RouterView />

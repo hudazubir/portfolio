@@ -39,6 +39,19 @@
 }
 
 @layer base {
+  html.admin-light,
+  html.site-light {
+    color-scheme: light;
+    --color-canvas: #f6f7fb;
+    --color-surface: #ffffff;
+    --color-surface-raised: #ffffff;
+    --color-border: #d9dce6;
+    --color-foreground: #18181b;
+    --color-muted: #646473;
+    --shadow-soft: 0 18px 60px rgb(39 39 42 / 0.1);
+    --shadow-glow: 0 0 40px rgb(139 92 246 / 0.12);
+  }
+
   *,
   *::before,
   *::after {
@@ -63,6 +76,13 @@
     line-height: 1.5;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
+  }
+
+  html.admin-light body,
+  html.site-light body {
+    background:
+      radial-gradient(circle at 15% 0%, rgb(139 92 246 / 0.08), transparent 32rem),
+      var(--color-canvas);
   }
 
   button,

@@ -1,77 +1,49 @@
 <script setup>
-import { computed, ref } from 'vue'
-import { ArrowUpRight, Code2, GitFork, Layers3, SearchX } from '@lucide/vue'
+import { computed, onMounted, ref } from 'vue'
+import { ArrowUpRight, Code2, GitFork, LoaderCircle, SearchX } from '@lucide/vue'
 import BaseBadge from '@/components/BaseBadge.vue'
 import BaseCard from '@/components/BaseCard.vue'
+import api from '@/services/api'
 
-const filters = ['All', 'Full stack', 'Frontend', 'Design systems']
+const filters = ['All', 'Featured']
 const activeFilter = ref('All')
-
-const projects = [
-  {
-    title: 'DevVault Platform',
-    category: 'Full stack',
-    summary:
-      'A premium portfolio and content platform with secure administration, structured content, and media storage.',
-    technologies: ['Vue 3', 'Laravel', 'MySQL', 'Tailwind CSS'],
-    accent: 'violet',
-    featured: true,
-  },
-  {
-    title: 'Pulse Analytics',
-    category: 'Frontend',
-    summary:
-      'A responsive analytics workspace that turns complex product metrics into focused, actionable views.',
-    technologies: ['Vue 3', 'Charts', 'REST API'],
-    accent: 'cyan',
-  },
-  {
-    title: 'Orbit UI',
-    category: 'Design systems',
-    summary:
-      'A documented component system with accessible interaction patterns, composable APIs, and shared design tokens.',
-    technologies: ['Vue 3', 'Storybook', 'Accessibility'],
-    accent: 'amber',
-  },
-  {
-    title: 'Flowboard',
-    category: 'Frontend',
-    summary:
-      'A collaborative planning interface with flexible boards, keyboard-friendly controls, and optimistic updates.',
-    technologies: ['Vue 3', 'Pinia', 'Drag and drop'],
-    accent: 'rose',
-  },
-  {
-    title: 'Atlas CMS',
-    category: 'Full stack',
-    summary:
-      'A compact publishing workflow with role-based access, content drafts, asset uploads, and live previews.',
-    technologies: ['Vue Router', 'Laravel', 'MySQL'],
-    accent: 'emerald',
-  },
-  {
-    title: 'Beacon Components',
-    category: 'Design systems',
-    summary:
-      'Reusable product primitives designed for consistent theming, validation states, and responsive composition.',
-    technologies: ['Vue SFC', 'Tailwind CSS', 'Design tokens'],
-    accent: 'blue',
-  },
-]
+const projects = ref([])
+const isLoading = ref(true)
+const errorMessage = ref('')
 
 const filteredProjects = computed(() => {
-  if (activeFilter.value === 'All') return projects
-  return projects.filter((project) => project.category === activeFilter.value)
+  if (activeFilter.value === 'Featured') {
+    return projects.value.filter((project) => project.is_featured)
+  }
+
+  return projects.value
 })
 
-const accentClasses = {
-  violet: 'from-primary/30 via-primary/10 to-canvas',
-  cyan: 'from-accent/25 via-accent/5 to-canvas',
-  amber: 'from-warning/25 via-warning/5 to-canvas',
-  rose: 'from-danger/25 via-danger/5 to-canvas',
-  emerald: 'from-success/25 via-success/5 to-canvas',
-  blue: 'from-blue-500/25 via-blue-500/5 to-canvas',
+const accentClasses = [
+  'from-primary/30 via-primary/10 to-canvas',
+  'from-accent/25 via-accent/5 to-canvas',
+  'from-warning/25 via-warning/5 to-canvas',
+  'from-danger/25 via-danger/5 to-canvas',
+  'from-success/25 via-success/5 to-canvas',
+  'from-blue-500/25 via-blue-500/5 to-canvas',
+]
+
+function projectAccent(index) {
+  return accentClasses[index % accentClasses.length]
 }
+
+async function fetchProjects() {
+  try {
+    const response = await api.get('/api/projects')
+    projects.value = response.data
+  } catch (error) {
+    errorMessage.value = error.response?.data?.message || 'Unable to load projects right now.'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+onMounted(fetchProjects)
 </script>
 
 <template>
@@ -124,8 +96,21 @@ const accentClasses = {
         </div>
       </div>
 
+      <div v-if="isLoading" class="grid min-h-72 place-items-center" role="status">
+        <div class="text-center text-muted">
+          <LoaderCircle :size="28" class="mx-auto animate-spin" aria-hidden="true" />
+          <p class="mt-3 text-sm">Loading projects...</p>
+        </div>
+      </div>
+
+      <BaseCard v-else-if="errorMessage" variant="outline" class="mt-10 text-center">
+        <SearchX :size="28" class="mx-auto text-danger" aria-hidden="true" />
+        <h3 class="mt-4 font-semibold">Projects unavailable</h3>
+        <p class="mt-2 text-sm text-muted">{{ errorMessage }}</p>
+      </BaseCard>
+
       <TransitionGroup
-        v-if="filteredProjects.length"
+        v-else-if="filteredProjects.length"
         tag="div"
         class="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-3"
         enter-active-class="transition duration-300 ease-out motion-reduce:transition-none"
@@ -136,20 +121,30 @@ const accentClasses = {
         leave-to-class="opacity-0"
       >
         <BaseCard
-          v-for="project in filteredProjects"
-          :key="project.title"
+          v-for="(project, index) in filteredProjects"
+          :key="project.id"
           padding="none"
           hoverable
           class="group flex flex-col"
         >
           <div
             class="relative min-h-56 overflow-hidden border-b border-border bg-gradient-to-br p-6"
-            :class="accentClasses[project.accent]"
+            :class="projectAccent(index)"
           >
+            <img
+              v-if="project.image_url"
+              :src="project.image_url"
+              :alt="`${project.title} preview`"
+              class="absolute inset-0 size-full object-cover opacity-75 transition duration-500 group-hover:scale-105 motion-reduce:transition-none"
+            />
             <div
+              v-if="!project.image_url"
               class="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_center,#fff_1px,transparent_1px)] [background-size:22px_22px]"
             />
-            <div class="relative flex h-full min-h-44 items-center justify-center">
+            <div
+              v-if="!project.image_url"
+              class="relative flex h-full min-h-44 items-center justify-center"
+            >
               <div
                 class="w-full max-w-xs rounded-lg border border-white/10 bg-canvas/75 p-4 shadow-soft backdrop-blur"
               >
@@ -173,19 +168,16 @@ const accentClasses = {
 
           <div class="flex flex-1 flex-col p-6">
             <div class="flex items-center justify-between gap-4">
-              <BaseBadge :tone="project.featured ? 'primary' : 'neutral'" size="sm">
-                {{ project.featured ? 'Featured' : project.category }}
+              <BaseBadge :tone="project.is_featured ? 'primary' : 'neutral'" size="sm">
+                {{ project.is_featured ? 'Featured' : 'Project' }}
               </BaseBadge>
-              <component
-                :is="project.category === 'Design systems' ? Layers3 : Code2"
-                :size="18"
-                class="text-muted"
-                aria-hidden="true"
-              />
+              <Code2 :size="18" class="text-muted" aria-hidden="true" />
             </div>
 
             <h3 class="mt-5 text-xl font-semibold">{{ project.title }}</h3>
-            <p class="mt-3 flex-1 text-sm leading-6 text-muted">{{ project.summary }}</p>
+            <p class="mt-3 line-clamp-3 min-h-18 flex-1 text-sm leading-6 text-muted">
+              {{ project.description }}
+            </p>
 
             <ul
               class="mt-6 flex flex-wrap gap-x-4 gap-y-2"
@@ -200,17 +192,27 @@ const accentClasses = {
               </li>
             </ul>
 
-            <div class="mt-6 flex items-center gap-5 border-t border-border pt-5">
-              <a
-                href="#"
-                class="inline-flex items-center gap-1.5 text-sm font-semibold transition hover:text-accent motion-reduce:transition-none"
-                @click.prevent
+            <div class="mt-6 flex flex-wrap items-center gap-5 border-t border-border pt-5">
+              <RouterLink
+                :to="{ name: 'project-details', params: { slug: project.slug } }"
+                class="inline-flex items-center gap-1.5 text-sm font-semibold transition hover:text-primary motion-reduce:transition-none"
               >
-                Case study
+                View case study
+                <ArrowUpRight :size="15" aria-hidden="true" />
+              </RouterLink>
+              <a
+                v-if="project.project_url"
+                :href="project.project_url"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex items-center gap-1.5 text-sm font-semibold transition hover:text-accent motion-reduce:transition-none"
+              >
+                Live
                 <ArrowUpRight :size="15" aria-hidden="true" />
               </a>
               <a
-                href="https://github.com/"
+                v-if="project.github_url"
+                :href="project.github_url"
                 target="_blank"
                 rel="noopener noreferrer"
                 class="inline-flex items-center gap-1.5 text-sm font-medium text-muted transition hover:text-foreground motion-reduce:transition-none"
@@ -225,8 +227,16 @@ const accentClasses = {
 
       <BaseCard v-else variant="outline" class="mt-10 text-center">
         <SearchX :size="28" class="mx-auto text-muted" aria-hidden="true" />
-        <h3 class="mt-4 font-semibold">No projects found</h3>
-        <p class="mt-2 text-sm text-muted">Try another category to see more work.</p>
+        <h3 class="mt-4 font-semibold">
+          {{ projects.length ? 'No featured projects yet' : 'No published projects yet' }}
+        </h3>
+        <p class="mt-2 text-sm text-muted">
+          {{
+            projects.length
+              ? 'Choose All to view the complete project archive.'
+              : 'Published work will appear here soon.'
+          }}
+        </p>
       </BaseCard>
     </section>
   </div>

@@ -59,7 +59,7 @@ const describedBy = computed(() => {
 </script>
 
 <template>
-  <div class="grid gap-2">
+  <div class="grid content-start gap-2">
     <label :for="inputId" class="text-sm font-medium text-foreground">
       {{ label }}
       <span v-if="required" class="text-danger" aria-hidden="true">*</span>

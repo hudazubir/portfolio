@@ -1,10 +1,12 @@
 <script setup>
-import { ref, watch } from 'vue'
-import { Menu, X } from '@lucide/vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { Menu, Moon, Sun, X } from '@lucide/vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
 const isMenuOpen = ref(false)
+const theme = ref(localStorage.getItem('devvault-site-theme') || 'dark')
+const isLightTheme = computed(() => theme.value === 'light')
 
 const navigation = [
   { label: 'Home', to: '/' },
@@ -15,6 +17,31 @@ const navigation = [
   { label: 'Contact', to: '/contact' },
 ]
 
+function isCurrentRoute(path) {
+  if (path === '/') return route.path === '/'
+
+  return route.path === path || route.path.startsWith(`${path}/`)
+}
+
+function applyTheme() {
+  document.documentElement.classList.toggle('site-light', isLightTheme.value)
+}
+
+function toggleTheme() {
+  theme.value = isLightTheme.value ? 'dark' : 'light'
+}
+
+watch(theme, () => {
+  localStorage.setItem('devvault-site-theme', theme.value)
+  applyTheme()
+})
+
+onMounted(applyTheme)
+
+onBeforeUnmount(() => {
+  document.documentElement.classList.remove('site-light')
+})
+
 watch(
   () => route.fullPath,
   () => {
@@ -24,7 +51,7 @@ watch(
 </script>
 
 <template>
-  <header class="sticky top-0 z-40 border-b border-white/5 bg-canvas/75 backdrop-blur-xl">
+  <header class="sticky top-0 z-40 border-b border-border bg-canvas/75 backdrop-blur-xl">
     <nav
       class="mx-auto flex min-h-18 max-w-7xl items-center justify-between px-5 sm:px-8"
       aria-label="Primary navigation"
@@ -49,30 +76,56 @@ watch(
           :key="item.label"
           :to="item.to"
           class="rounded-md px-4 py-2 text-sm font-medium text-muted transition hover:bg-white/5 hover:text-foreground motion-reduce:transition-none"
-          active-class="bg-white/5 text-foreground"
+          :class="isCurrentRoute(item.to) && 'bg-primary/10 text-foreground'"
+          :aria-current="isCurrentRoute(item.to) ? 'page' : undefined"
         >
           {{ item.label }}
         </RouterLink>
       </div>
 
-      <a
-        href="mailto:hello@example.com"
-        class="hidden min-h-10 items-center rounded-md border border-primary/30 bg-primary/10 px-4 text-sm font-semibold text-primary transition hover:border-primary/60 hover:bg-primary/15 lg:inline-flex motion-reduce:transition-none"
-      >
-        Start a conversation
-      </a>
+      <div class="hidden items-center gap-2 lg:flex">
+        <button
+          type="button"
+          class="grid size-10 place-items-center rounded-md border border-border bg-surface text-muted transition hover:border-primary/40 hover:text-foreground motion-reduce:transition-none"
+          :aria-label="isLightTheme ? 'Use dark theme' : 'Use light theme'"
+          :title="isLightTheme ? 'Use dark theme' : 'Use light theme'"
+          @click="toggleTheme"
+        >
+          <Moon v-if="isLightTheme" :size="17" aria-hidden="true" />
+          <Sun v-else :size="17" aria-hidden="true" />
+        </button>
 
-      <button
-        type="button"
-        class="grid size-10 place-items-center rounded-md border border-border text-muted lg:hidden"
-        :aria-expanded="isMenuOpen"
-        aria-controls="mobile-navigation"
-        aria-label="Toggle navigation"
-        @click="isMenuOpen = !isMenuOpen"
-      >
-        <X v-if="isMenuOpen" :size="20" aria-hidden="true" />
-        <Menu v-else :size="20" aria-hidden="true" />
-      </button>
+        <a
+          href="mailto:hello@example.com"
+          class="inline-flex min-h-10 items-center rounded-md border border-primary/30 bg-primary/10 px-4 text-sm font-semibold text-primary transition hover:border-primary/60 hover:bg-primary/15 motion-reduce:transition-none"
+        >
+          Start a conversation
+        </a>
+      </div>
+
+      <div class="flex items-center gap-2 lg:hidden">
+        <button
+          type="button"
+          class="grid size-10 place-items-center rounded-md border border-border bg-surface text-muted"
+          :aria-label="isLightTheme ? 'Use dark theme' : 'Use light theme'"
+          @click="toggleTheme"
+        >
+          <Moon v-if="isLightTheme" :size="18" aria-hidden="true" />
+          <Sun v-else :size="18" aria-hidden="true" />
+        </button>
+
+        <button
+          type="button"
+          class="grid size-10 place-items-center rounded-md border border-border text-muted"
+          :aria-expanded="isMenuOpen"
+          aria-controls="mobile-navigation"
+          aria-label="Toggle navigation"
+          @click="isMenuOpen = !isMenuOpen"
+        >
+          <X v-if="isMenuOpen" :size="20" aria-hidden="true" />
+          <Menu v-else :size="20" aria-hidden="true" />
+        </button>
+      </div>
     </nav>
 
     <div
@@ -86,7 +139,8 @@ watch(
           :key="item.label"
           :to="item.to"
           class="rounded-md px-3 py-3 text-sm font-medium text-muted hover:bg-white/5 hover:text-foreground"
-          active-class="bg-white/5 text-foreground"
+          :class="isCurrentRoute(item.to) && 'bg-primary/10 text-foreground'"
+          :aria-current="isCurrentRoute(item.to) ? 'page' : undefined"
           @click="isMenuOpen = false"
         >
           {{ item.label }}
