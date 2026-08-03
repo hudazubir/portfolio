@@ -89,6 +89,22 @@ const router = createRouter({
             adminTitle: 'Projects',
           },
         },
+        {
+          path: 'skills',
+          name: 'admin-skills',
+          component: () => import('@/views/admin/AdminSkillsView.vue'),
+          meta: {
+            adminTitle: 'Skills',
+          },
+        },
+        {
+          path: 'experience',
+          name: 'admin-experience',
+          component: () => import('@/views/admin/AdminExperienceView.vue'),
+          meta: {
+            adminTitle: 'Experience',
+          },
+        },
       ],
     },
   ],

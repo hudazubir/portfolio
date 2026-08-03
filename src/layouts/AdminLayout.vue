@@ -27,8 +27,13 @@ const theme = ref(localStorage.getItem('devvault-admin-theme') || 'dark')
 const navigation = [
   { label: 'Overview', icon: LayoutDashboard, to: '/admin', available: true },
   { label: 'Projects', icon: FolderKanban, to: '/admin/projects', available: true },
-  { label: 'Skills', icon: Wrench, available: false },
-  { label: 'Experience', icon: BriefcaseBusiness, available: false },
+  { label: 'Skills', icon: Wrench, to: '/admin/skills', available: true },
+  {
+    label: 'Experience',
+    icon: BriefcaseBusiness,
+    to: '/admin/experience',
+    available: true,
+  },
   { label: 'Posts', icon: FileText, available: false },
   { label: 'Messages', icon: MessagesSquare, to: '/admin/messages', available: true },
 ]

@@ -15,12 +15,20 @@ import api from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
+const projectCount = ref(0)
+const skillCount = ref(0)
+const experienceCount = ref(0)
 const messageCount = ref(0)
 
 const summaries = computed(() => [
-  { label: 'Projects', value: 0, icon: FolderKanban, tone: 'primary' },
-  { label: 'Skills', value: 0, icon: Wrench, tone: 'accent' },
-  { label: 'Experience', value: 0, icon: BriefcaseBusiness, tone: 'success' },
+  { label: 'Projects', value: projectCount.value, icon: FolderKanban, tone: 'primary' },
+  { label: 'Skills', value: skillCount.value, icon: Wrench, tone: 'accent' },
+  {
+    label: 'Experience',
+    value: experienceCount.value,
+    icon: BriefcaseBusiness,
+    tone: 'success',
+  },
   { label: 'Messages', value: messageCount.value, icon: MessagesSquare, tone: 'warning' },
 ])
 
@@ -50,12 +58,19 @@ const toneClasses = {
 }
 
 async function fetchSummary() {
-  try {
-    const response = await api.get('/api/admin/contact-messages')
-    messageCount.value = response.data.total
-  } catch {
-    messageCount.value = 0
-  }
+  const [projectsResult, skillsResult, experiencesResult, messagesResult] =
+    await Promise.allSettled([
+      api.get('/api/admin/projects'),
+      api.get('/api/admin/skills'),
+      api.get('/api/admin/experiences'),
+      api.get('/api/admin/contact-messages'),
+    ])
+
+  projectCount.value = projectsResult.status === 'fulfilled' ? projectsResult.value.data.length : 0
+  skillCount.value = skillsResult.status === 'fulfilled' ? skillsResult.value.data.length : 0
+  experienceCount.value =
+    experiencesResult.status === 'fulfilled' ? experiencesResult.value.data.length : 0
+  messageCount.value = messagesResult.status === 'fulfilled' ? messagesResult.value.data.total : 0
 }
 
 onMounted(fetchSummary)
@@ -70,7 +85,7 @@ onMounted(fetchSummary)
           Welcome back, {{ auth.user?.name || 'Admin' }}.
         </h1>
         <p class="mt-2 text-muted">
-          Your content workspace is connected and ready for its first management module.
+          Your content workspace is connected and reporting live portfolio data.
         </p>
       </div>
 

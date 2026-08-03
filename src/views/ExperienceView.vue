@@ -1,52 +1,87 @@
 <script setup>
-import { ArrowRight, Check, GitPullRequest, MessageSquareText, Rocket, Users } from '@lucide/vue'
+import { computed, onMounted, ref } from 'vue'
+import {
+  ArrowRight,
+  Check,
+  ExternalLink,
+  GitPullRequest,
+  LoaderCircle,
+  MapPin,
+  MessageSquareText,
+  Rocket,
+  SearchX,
+  Users,
+} from '@lucide/vue'
 import BaseBadge from '@/components/BaseBadge.vue'
+import BaseButton from '@/components/BaseButton.vue'
 import BaseCard from '@/components/BaseCard.vue'
+import api from '@/services/api'
 
-const experience = [
-  {
-    period: '2024 — Present',
-    role: 'Senior Frontend Engineer',
-    company: 'Independent Product Studio',
-    type: 'Consulting',
-    summary:
-      'Partnering with product teams to shape and deliver maintainable Vue applications from early architecture through production polish.',
-    achievements: [
-      'Created reusable frontend foundations that reduced repeated implementation across product modules.',
-      'Translated ambiguous product requirements into clear, responsive interaction flows.',
-      'Connected authenticated interfaces to structured backend services and reliable loading states.',
-    ],
-    technologies: ['Vue 3', 'Pinia', 'Tailwind CSS', 'Laravel'],
-  },
-  {
-    period: '2022 — 2024',
-    role: 'Frontend Engineer',
-    company: 'Digital Product Team',
-    type: 'Full time',
-    summary:
-      'Built customer-facing workflows and internal product tools while improving consistency across a growing frontend codebase.',
-    achievements: [
-      'Introduced composable UI patterns for forms, feedback states, and shared navigation.',
-      'Improved responsive behavior across high-traffic application screens.',
-      'Collaborated closely with designers and backend engineers to reduce delivery uncertainty.',
-    ],
-    technologies: ['Vue', 'Vue Router', 'REST APIs', 'CSS'],
-  },
-  {
-    period: '2020 — 2022',
-    role: 'Frontend Developer',
-    company: 'Creative Technology Studio',
-    type: 'Full time',
-    summary:
-      'Turned visual concepts into accessible websites and interactive campaign experiences across a wide range of screen sizes.',
-    achievements: [
-      'Developed component-based interfaces from design specifications.',
-      'Established reliable browser and device testing practices.',
-      'Strengthened foundations in semantic markup, performance, and interaction design.',
-    ],
-    technologies: ['JavaScript', 'HTML', 'CSS', 'Animation'],
-  },
-]
+const experiences = ref([])
+const isLoading = ref(true)
+const errorMessage = ref('')
+const visibleCount = ref(5)
+const expandedExperienceIds = ref([])
+const visibleExperiences = computed(() => experiences.value.slice(0, visibleCount.value))
+const hasMoreExperiences = computed(() => visibleCount.value < experiences.value.length)
+const remainingCount = computed(() => experiences.value.length - visibleCount.value)
+
+function showMoreExperiences() {
+  visibleCount.value += 5
+}
+
+function showLessExperiences() {
+  visibleCount.value = 5
+}
+
+function isExperienceExpanded(id) {
+  return expandedExperienceIds.value.includes(id)
+}
+
+function hasHiddenContent(experience) {
+  return experience.description.length > 280 || experience.achievements?.length > 3
+}
+
+function visibleAchievements(experience) {
+  if (isExperienceExpanded(experience.id)) return experience.achievements || []
+
+  return experience.achievements?.slice(0, 3) || []
+}
+
+function toggleExperience(id) {
+  expandedExperienceIds.value = isExperienceExpanded(id)
+    ? expandedExperienceIds.value.filter((experienceId) => experienceId !== id)
+    : [...expandedExperienceIds.value, id]
+}
+
+function formatDate(date) {
+  if (!date) return ''
+
+  return new Intl.DateTimeFormat('en', {
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(`${date}T00:00:00`))
+}
+
+function experiencePeriod(experience) {
+  const start = formatDate(experience.start_date)
+  const end = experience.is_current ? 'Present' : formatDate(experience.end_date)
+
+  return [start, end].filter(Boolean).join(' — ')
+}
+
+async function fetchExperiences() {
+  try {
+    const response = await api.get('/api/experiences')
+    experiences.value = response.data
+  } catch (error) {
+    errorMessage.value = error.response?.data?.message || 'Unable to load experience right now.'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+onMounted(fetchExperiences)
 
 const contributions = [
   {
@@ -106,52 +141,113 @@ const contributions = [
           </p>
         </div>
 
-        <ol class="relative grid gap-8 border-l border-border pl-6 sm:pl-10">
-          <li v-for="role in experience" :key="`${role.company}-${role.period}`" class="relative">
-            <span
-              class="absolute -left-[1.92rem] top-8 size-3 rounded-full border-2 border-canvas bg-primary shadow-glow sm:-left-[2.92rem]"
-              aria-hidden="true"
-            />
+        <div v-if="isLoading" class="grid min-h-64 place-items-center" role="status">
+          <div class="text-center text-muted">
+            <LoaderCircle :size="28" class="mx-auto animate-spin" aria-hidden="true" />
+            <p class="mt-3 text-sm">Loading experience...</p>
+          </div>
+        </div>
 
-            <BaseCard variant="glass">
-              <template #header>
-                <div class="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <p class="text-sm font-semibold text-primary">{{ role.period }}</p>
-                    <h3 class="mt-2 text-xl font-bold">{{ role.role }}</h3>
-                    <p class="mt-1 text-sm text-muted">{{ role.company }}</p>
+        <BaseCard v-else-if="errorMessage" variant="outline" class="text-center">
+          <SearchX :size="28" class="mx-auto text-danger" aria-hidden="true" />
+          <h3 class="mt-4 font-semibold">Experience unavailable</h3>
+          <p class="mt-2 text-sm text-muted">{{ errorMessage }}</p>
+        </BaseCard>
+
+        <div v-else-if="experiences.length">
+          <ol class="relative grid gap-8 border-l border-border pl-6 sm:pl-10">
+            <li v-for="role in visibleExperiences" :key="role.id" class="relative">
+              <span
+                class="absolute -left-[1.92rem] top-8 size-3 rounded-full border-2 border-canvas bg-primary shadow-glow sm:-left-[2.92rem]"
+                aria-hidden="true"
+              />
+
+              <BaseCard variant="glass">
+                <template #header>
+                  <div class="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p class="text-sm font-semibold text-primary">
+                        {{ experiencePeriod(role) }}
+                      </p>
+                      <h3 class="mt-2 text-xl font-bold">{{ role.role }}</h3>
+                      <p class="mt-1 text-sm text-muted">
+                        {{ role.company }}
+                        <span v-if="role.location"> · {{ role.location }}</span>
+                      </p>
+                    </div>
+                    <BaseBadge v-if="role.employment_type">{{ role.employment_type }}</BaseBadge>
                   </div>
-                  <BaseBadge>{{ role.type }}</BaseBadge>
-                </div>
-              </template>
+                </template>
 
-              <p class="text-sm leading-6 text-muted">{{ role.summary }}</p>
-
-              <ul class="mt-6 grid gap-3">
-                <li
-                  v-for="achievement in role.achievements"
-                  :key="achievement"
-                  class="flex gap-3 text-sm leading-6 text-muted"
+                <p
+                  class="whitespace-pre-line text-sm leading-7 text-muted"
+                  :class="!isExperienceExpanded(role.id) && 'line-clamp-4'"
                 >
-                  <span
-                    class="mt-1 grid size-5 shrink-0 place-items-center rounded-full bg-success/10 text-success"
-                  >
-                    <Check :size="12" stroke-width="3" aria-hidden="true" />
-                  </span>
-                  {{ achievement }}
-                </li>
-              </ul>
+                  {{ role.description }}
+                </p>
 
-              <template #footer>
-                <ul class="flex flex-wrap gap-2" :aria-label="`${role.role} technologies`">
-                  <li v-for="technology in role.technologies" :key="technology">
-                    <BaseBadge size="sm">{{ technology }}</BaseBadge>
+                <ul v-if="role.achievements?.length" class="mt-6 grid gap-3">
+                  <li
+                    v-for="achievement in visibleAchievements(role)"
+                    :key="achievement"
+                    class="flex gap-3 text-sm leading-6 text-muted"
+                  >
+                    <span
+                      class="mt-1 grid size-5 shrink-0 place-items-center rounded-full bg-success/10 text-success"
+                    >
+                      <Check :size="12" stroke-width="3" aria-hidden="true" />
+                    </span>
+                    {{ achievement }}
                   </li>
                 </ul>
-              </template>
-            </BaseCard>
-          </li>
-        </ol>
+
+                <button
+                  v-if="hasHiddenContent(role)"
+                  type="button"
+                  class="mt-5 text-sm font-semibold text-primary transition hover:text-primary-hover motion-reduce:transition-none"
+                  :aria-expanded="isExperienceExpanded(role.id)"
+                  @click="toggleExperience(role.id)"
+                >
+                  {{ isExperienceExpanded(role.id) ? 'Show less' : 'Read more' }}
+                </button>
+
+                <template v-if="role.company_url || role.location" #footer>
+                  <div class="flex flex-wrap items-center gap-5 text-sm text-muted">
+                    <span v-if="role.location" class="inline-flex items-center gap-2">
+                      <MapPin :size="15" aria-hidden="true" />
+                      {{ role.location }}
+                    </span>
+                    <a
+                      v-if="role.company_url"
+                      :href="role.company_url"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="inline-flex items-center gap-2 font-semibold transition hover:text-foreground motion-reduce:transition-none"
+                    >
+                      Company website
+                      <ExternalLink :size="14" aria-hidden="true" />
+                    </a>
+                  </div>
+                </template>
+              </BaseCard>
+            </li>
+          </ol>
+
+          <div v-if="experiences.length > 5" class="mt-8 flex justify-center">
+            <BaseButton v-if="hasMoreExperiences" variant="secondary" @click="showMoreExperiences">
+              Show {{ Math.min(5, remainingCount) }} more
+            </BaseButton>
+            <BaseButton v-else variant="ghost" @click="showLessExperiences"> Show less </BaseButton>
+          </div>
+        </div>
+
+        <BaseCard v-else variant="outline" class="text-center">
+          <SearchX :size="28" class="mx-auto text-muted" aria-hidden="true" />
+          <h3 class="mt-4 font-semibold">No published experience yet</h3>
+          <p class="mt-2 text-sm text-muted">
+            Professional timeline entries will appear here soon.
+          </p>
+        </BaseCard>
       </div>
     </section>
 
